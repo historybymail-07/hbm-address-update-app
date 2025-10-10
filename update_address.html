@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Update Request - History by Mail</title>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color:#FFFFFF ;
+            font-family: 'Libre Baskerville', serif;
+            line-height: 1.7;
+        }
+        
+        .email-container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color:  #FCF7F2;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #cac3c3;
+        }
+        
+        .header {
+            background-color:#FFFFFF ;
+            color: #0A3262;
+            padding: 25px 30px;
+            text-align: left;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background:  #0A3262 ;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            margin-left: 15px;
+        }
+        
+        .logo {
+            height: 50px;
+            width: auto;
+        }
+        
+        .content {
+            padding: 35px 30px;
+        }
+        
+        .greeting {
+            color: #0A3262;
+            font-size: 16px;
+            font-weight: 400;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #D2E5FD;
+            padding-bottom: 15px;
+        }
+        
+        .message {
+            color: #444;
+            font-size: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        
+        .subscriptions-container {
+            margin: 30px 0;
+        }
+        
+        .subscriptions-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #FFFFFF;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(10, 50, 98, 0.08);
+            text-align: center;
+        }
+        
+        .subscriptions-table th {
+            background-color: #0A3262;
+            color: #FFFFFF;
+            padding: 20px 25px;
+            text-align: center;
+            font-weight: 400;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+        }
+        
+        .subscriptions-table td {
+            padding: 25px;
+            border: 1px solid #D2E5FD;
+            vertical-align: top;
+            text-align: center;
+        }
+        
+       
+        
+        .subscription-number {
+            font-weight: 700;
+            color: #0A3262;
+            font-size: 15px;
+            width: 200px;
+        }
+        
+        .subscription-name {
+            font-weight: 400;
+            color: #333;
+            font-size: 16px;
+            width: 150px;
+        }
+        
+        .subscription-address {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.6;
+            width: 300px;
+        }
+        
+        .request-box {
+            background-color: #D2E5FD;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 25px 0;
+            border-left: 4px solid #0A3262;
+        }
+        
+        .request-text {
+            color: #0A3262;
+            font-weight: 400;
+            font-size: 15px;
+            margin: 0;
+            text-align: center;
+        }
+        
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .response-button {
+            display: inline-block;
+            background-color: #0A3262;
+            color: #FCF7F2;
+            padding: 12px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 400;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            border: 1px solid #0A3262;
+            transition: all 0.2s ease;
+        }
+        
+        .response-button:hover {
+            background-color: #FCF7F2;
+            color: #0A3262;
+        }
+        
+        .closing {
+            color: #444;
+            font-size: 15px;
+            margin-top: 25px;
+            text-align: left;
+        }
+        
+        .signature {
+            color: #0A3262;
+            font-weight: 400;
+            font-size: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .footer {
+            background-color: #FFFFFF;
+            padding: 20px 30px;
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            border-top: 1px solid #E8E8E8;
+        }
+        
+        .vintage-accent {
+            position: relative;
+        }
+        
+        .vintage-accent::before {
+            position: absolute;
+            left: -25px;
+            top: 0;
+            color: #D2E5FD;
+            font-size: 18px;
+        }
+        
+        /* Responsive Design */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                max-width: 100% !important;
+                margin: 10px !important;
+                border-radius: 8px !important;
+            }
+            .header {
+                flex-direction: column !important;
+                text-align: center !important;
+                padding: 20px 15px !important;
+            }
+            .logo {
+                margin-right: 0 !important;
+                margin-bottom: 10px !important;
+            }
+            .header h1 {
+                font-size: 20px !important;
+                letter-spacing: 1px !important;
+                margin-left: 0 !important;
+            }
+            .content {
+                padding: 25px 20px !important;
+            }
+            .subscriptions-table {
+                font-size: 13px !important;
+            }
+            .subscriptions-table th,
+            .subscriptions-table td {
+                padding: 15px 10px !important;
+            }
+            .subscription-number,
+            .subscription-name,
+            .subscription-address {
+                width: auto !important;
+                display: block !important;
+                text-align: left !important;
+                margin-bottom: 10px !important;
+            }
+            .subscriptions-table tr {
+                display: block !important;
+                margin-bottom: 20px !important;
+                border: 1px solid #D2E5FD !important;
+                border-radius: 6px !important;
+                padding: 15px !important;
+            }
+            .subscriptions-table th {
+                display: none !important;
+            }
+            .subscriptions-table td {
+                border: none !important;
+                padding: 5px 0 !important;
+            }
+            .response-button {
+                width: 100% !important;
+                box-sizing: border-box !important;
+                padding: 12px 20px !important;
+                font-size: 13px !important;
+            }
+            .footer {
+                padding: 15px 20px !important;
+                font-size: 12px !important;
+            }
+        }
+        
+        @media only screen and (max-width: 480px) {
+            .email-container {
+                margin: 5px !important;
+            }
+            .content {
+                padding: 20px 15px !important;
+            }
+            .header {
+                padding: 15px 10px !important;
+            }
+            .subscriptions-table td {
+                padding: 3px 0 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="https://i.postimg.cc/Dy2nvz8V/HBM-Logo-without-BG.jpg" alt="History By Mail Logo" class="logo">
+            <h1>History By Mail</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Dear Manali Sharma,</div>
+            
+            <div class="message">
+                We have recieved your application for change of address. Please click on the button below to update your address
+            </div>
+            
+            <div class="button-container">
+                <a href="http://localhost:5173" class="response-button">Click Here to change your address</a>
+            </div>
+            
+            <div class="closing">
+                Thank you for your cooperation. Once we have this information, we will promptly update your records.
+            </div>
+            
+            <div class="signature">
+                Best regards,<br>
+                History by Mail Support Team
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>History by Mail Support Team</p>
+        </div>
+    </div>
+</body>
+</html>
