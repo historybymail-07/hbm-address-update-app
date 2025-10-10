@@ -273,7 +273,7 @@ function App() {
       if (dataLoaded) return;
 
       try {
-        const apiUrl = import.meta.env.PROD ? '/api/webhook-data' : 'http://localhost:3001/api/webhook-data';
+        const apiUrl = import.meta.env.PROD ? '/api/webhook-data' : 'https://hbm-address-update-app-production.up.railway.app/';
         const response = await fetch(apiUrl);
         if (response.ok) {
           const result = await response.json();
