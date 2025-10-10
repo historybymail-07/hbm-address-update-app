@@ -454,16 +454,17 @@ function App() {
           };
         });
 
-        // Send updated data back to n8n
-        const response = await fetch('https://n8n.sitepreviews.dev/webhook/d93e3a8c-9f3b-410e-a375-6d301cf7d4a4', {
-          method: 'POST',
+        // Send updated data back to n8n using GET method with query parameters
+        const queryParams = new URLSearchParams({
+          customer_name: customerName,
+          updated_subscriptions: JSON.stringify(webhookData)
+        });
+        
+        const response = await fetch(`https://n8n.sitepreviews.dev/webhook/d93e3a8c-9f3b-410e-a375-6d301cf7d4a4?${queryParams}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            customer_name: customerName,
-            updated_subscriptions: webhookData
-          })
+          }
         });
 
         if (response.ok) {
