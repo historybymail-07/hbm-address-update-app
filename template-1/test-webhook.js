@@ -15,40 +15,37 @@ async function testWebhook() {
     console.log('1️⃣ Testing POST Request with customer data...');
     
     // Send the customer data in new n8n format
-    const postData = [
-      {
-        output: {
-          customer_name: "Manali Sharma",
-          customer_id: 7818727325739,
-          email: "manali.sharma@e2msolutions.com",
-          date_time: "2025-10-03T13:06:21-05:00",
-          subscriptions: [
-            {
-              id: "698319426",
-              recipient_name: "Manali",
-              current_address: {
-                address1: "742 Evergreen Terrace, Suite 12A",
-                city: "Springfield",
-                province: "California",
-                zip: "90210",
-                country_code: "US"
-              }
-            },
-            {
-              id: "698319427",
-              recipient_name: "Shubham",
-              current_address: {
-                address1: "456 Oak Avenue, Suite 12",
-                city: "Chicago",
-                province: "Illinois",
-                zip: "60616",
-                country_code: "US"
-              }
-            }
-          ]
+    const postData = {
+      customer_name: "Shubham Joshi",
+      shopify_id: 7818727325739,
+      recharge_id: 211519611,
+      email: "manali.sharma@e2msolutions.com",
+      date_time: "2025-09-19T10:40:18-05:00",
+      subscriptions: [
+        {
+          id: "1",
+          recipient_name: "ayush",
+          current_address: {
+            address1: "123 Maple Street, Apt 4B",
+            city: "Springfield",
+            province: "IL",
+            zip: "62704",
+            country_code: "US"
+          }
+        },
+        {
+          id: "2",
+          recipient_name: "rahul",
+          current_address: {
+            address1: "456 Oak Avenue, Suite 12",
+            city: "Chicago",
+            province: "IL",
+            zip: "60616",
+            country_code: "US"
+          }
         }
-      }
-    ];
+      ]
+    };
     
     const response = await fetch(webhookUrl, {
       method: 'POST',

@@ -3,23 +3,22 @@ import './App.css'
 
 // Webhook interface for incoming data from n8n
 interface N8nWebhookData {
-  output: {
-    customer_name: string;
-    customer_id: number;
-    email: string;
-    date_time: string;
-    subscriptions: {
-      id: string;
-      recipient_name: string;
-      current_address: {
-        address1: string;
-        city: string;
-        province: string;
-        zip: string;
-        country_code: string;
-      };
-    }[];
-  };
+  customer_name: string;
+  shopify_id: number;
+  recharge_id: number;
+  email: string;
+  date_time: string;
+  subscriptions: {
+    id: string;
+    recipient_name: string;
+    current_address: {
+      address1: string;
+      city: string;
+      province: string;
+      zip: string;
+      country_code: string;
+    };
+  }[];
 }
 
 interface Subscription {
@@ -54,14 +53,17 @@ function App() {
   // Customer and subscription data from webhook
   const [customerName, setCustomerName] = useState<string>('');
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [dataLoaded, setDataLoaded] = useState<boolean>(false);
 
   // Metadata from n8n (not displayed in UI, but sent back)
   const [customerMetadata, setCustomerMetadata] = useState<{
-    customer_id: number | null;
+    shopify_id: number | null;
+    recharge_id: number | null;
     email: string;
     date_time: string;
   }>({
-    customer_id: null,
+    shopify_id: null,
+    recharge_id: null,
     email: '',
     date_time: ''
   });
@@ -264,9 +266,12 @@ function App() {
     };
   }, []);
 
-  // Poll for webhook data from server and populate subscription data
+  // Load webhook data from server once (don't override user input)
   useEffect(() => {
-    const pollWebhookData = async () => {
+    const loadWebhookData = async () => {
+      // Only load data once to prevent overriding user input
+      if (dataLoaded) return;
+
       try {
         const apiUrl = import.meta.env.PROD ? '/api/webhook-data' : 'http://localhost:3001/api/webhook-data';
         const response = await fetch(apiUrl);
@@ -276,16 +281,12 @@ function App() {
             // Get the latest webhook data
             const latestWebhookData = result.data[0];
 
-            // Handle new n8n data structure: [{"output": {...}}]
-            let webhookPayload: N8nWebhookData['output'] | null = null;
+            // Handle n8n data structure - direct object format
+            let webhookPayload: N8nWebhookData | null = null;
 
             if (latestWebhookData.data) {
-              // Check if data is array format from n8n
-              if (Array.isArray(latestWebhookData.data) && latestWebhookData.data[0]?.output) {
-                webhookPayload = latestWebhookData.data[0].output;
-              }
-              // Fallback for direct object format
-              else if (latestWebhookData.data.customer_name) {
+              // Check if data has the expected structure
+              if (latestWebhookData.data.customer_name && latestWebhookData.data.shopify_id) {
                 webhookPayload = latestWebhookData.data;
               }
             }
@@ -296,7 +297,8 @@ function App() {
 
               // Store metadata (not displayed in UI)
               setCustomerMetadata({
-                customer_id: webhookPayload.customer_id || null,
+                shopify_id: webhookPayload.shopify_id || null,
+                recharge_id: webhookPayload.recharge_id || null,
                 email: webhookPayload.email || '',
                 date_time: webhookPayload.date_time || ''
               });
@@ -326,30 +328,61 @@ function App() {
                   }
                 });
               }
+
+              // Mark data as loaded to prevent future overrides
+              setDataLoaded(true);
             }
           }
         }
       } catch (error) {
         console.log('Webhook server not available, using default data');
         // Fallback to default data if webhook server is not available
-        setCustomerName('Valued Customer');
+        setCustomerName('Manali Sharma');
+
+        // Set default metadata for testing
+        setCustomerMetadata({
+          shopify_id: 7818727325739,
+          recharge_id: 211519611,
+          email: 'manali.sharma@e2msolutions.com',
+          date_time: '2025-09-19T10:40:18-05:00'
+        });
+
         setSubscriptions([
           {
             id: '1',
-            name: 'Default Subscription',
-            address: '123 Main Street\nSpringfield, IL 62704'
+            name: 'ayush',
+            address: '123 Maple Street, Apt 4B\nSpringfield, IL 62704'
+          },
+          {
+            id: '2',
+            name: 'rahul',
+            address: '456 Oak Avenue, Suite 12\nChicago, IL 60616'
           }
         ]);
+
+        // Initialize form data with first subscription
+        setFormData({
+          selectedSubscriptions: ['1'],
+          subscriptionAddresses: {
+            '1': {
+              street: '123 Maple Street, Apt 4B',
+              city: 'Springfield',
+              state: 'IL',
+              zipCode: '62704',
+              country: 'United States'
+            }
+          }
+        });
+
+        // Mark data as loaded
+        setDataLoaded(true);
       }
     };
 
-    // Poll every 2 seconds
-    const interval = setInterval(pollWebhookData, 2000);
+    // Load data once on component mount
+    loadWebhookData();
 
-    // Initial call
-    pollWebhookData();
-
-    return () => clearInterval(interval);
+    // No cleanup needed since we're not using interval anymore
   }, []);
 
 
@@ -446,13 +479,23 @@ function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('Form submitted!');
+    console.log('Form data:', formData);
+    console.log('Selected subscriptions:', formData.selectedSubscriptions);
+    console.log('Subscription addresses:', formData.subscriptionAddresses);
+
     // Check if all selected subscriptions have complete address information
     const allAddressesComplete = formData.selectedSubscriptions.every(subscriptionId => {
       const address = formData.subscriptionAddresses[subscriptionId];
+      console.log(`Checking subscription ${subscriptionId}:`, address);
       return address && address.street && address.city && address.state && address.zipCode;
     });
 
+    console.log('All addresses complete:', allAddressesComplete);
+    console.log('Has selected subscriptions:', formData.selectedSubscriptions.length > 0);
+
     if (formData.selectedSubscriptions.length > 0 && allAddressesComplete) {
+      console.log('Validation passed, sending to n8n...');
       try {
         // Prepare data for webhook in the required format
         const webhookData = formData.selectedSubscriptions.map(subscriptionId => {
@@ -494,7 +537,8 @@ function App() {
         // Include metadata that came from n8n
         const queryParams = new URLSearchParams({
           customer_name: customerName,
-          customer_id: customerMetadata.customer_id?.toString() || '',
+          shopify_id: customerMetadata.shopify_id?.toString() || '',
+          recharge_id: customerMetadata.recharge_id?.toString() || '',
           email: customerMetadata.email,
           date_time: customerMetadata.date_time,
           updated_subscriptions: JSON.stringify(webhookData)
@@ -537,6 +581,18 @@ function App() {
           setShowToast(false);
         }, 3000);
       }
+    } else {
+      console.log('Validation failed!');
+      console.log('Selected subscriptions count:', formData.selectedSubscriptions.length);
+      console.log('All addresses complete:', allAddressesComplete);
+
+      // Show validation error toast
+      setToastMessage('Please select at least one subscription and fill all required address fields.');
+      setShowToast(true);
+
+      setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
     }
   };
 
@@ -767,7 +823,11 @@ function App() {
 
 
             <div className="button-container">
-              <button type="submit" className="response-button">
+              <button
+                type="submit"
+                className="response-button"
+                onClick={() => console.log('Button clicked!')}
+              >
                 UPDATE ADDRESS
               </button>
             </div>
