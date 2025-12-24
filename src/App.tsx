@@ -272,8 +272,26 @@ function App() {
       // Only load data once to prevent overriding user input
       if (dataLoaded) return;
 
+      // Extract email from URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const customerEmail = urlParams.get('email');
+
+      // If no email in URL, show error message
+      if (!customerEmail) {
+        console.log('No email parameter in URL');
+        setCustomerName('');
+        setSubscriptions([]);
+        setDataLoaded(true);
+        return;
+      }
+
       try {
-        const apiUrl = import.meta.env.PROD ? '/api/webhook-data' : 'https://hbm-address-update-app-production.up.railway.app/webhook/customer-data';
+        // Build API URL with email parameter
+        const baseUrl = import.meta.env.PROD
+          ? '/api/webhook-data'
+          : 'https://hbm-address-update-app-production.up.railway.app/api/webhook-data';
+        const apiUrl = `${baseUrl}?email=${encodeURIComponent(customerEmail)}`;
+
         const response = await fetch(apiUrl);
         if (response.ok) {
           const result = await response.json();
@@ -286,7 +304,7 @@ function App() {
 
             if (latestWebhookData.data) {
               // Check if data has the expected structure
-              if (latestWebhookData.data.customer_name && latestWebhookData.data.shopify_id) {
+              if (latestWebhookData.data.customer_name && latestWebhookData.data.subscriptions) {
                 webhookPayload = latestWebhookData.data;
               }
             }
@@ -331,50 +349,25 @@ function App() {
 
               // Mark data as loaded to prevent future overrides
               setDataLoaded(true);
+            } else {
+              // Data structure not as expected
+              console.log('Webhook data structure not recognized');
+              setCustomerName('');
+              setSubscriptions([]);
+              setDataLoaded(true);
             }
+          } else {
+            // No data found for this email (session expired or invalid)
+            console.log('No data found for email:', customerEmail);
+            setCustomerName('');
+            setSubscriptions([]);
+            setDataLoaded(true);
           }
         }
       } catch (error) {
-        console.log('Webhook server not available, using default data');
-        // Fallback to default data if webhook server is not available
-        setCustomerName('Manali Sharma');
-
-        // Set default metadata for testing
-        setCustomerMetadata({
-          shopify_id: 7818727325739,
-          recharge_id: 211519611,
-          email: 'manali.sharma@e2msolutions.com',
-          date_time: '2025-09-19T10:40:18-05:00'
-        });
-
-        setSubscriptions([
-          {
-            id: '1',
-            name: 'ayush',
-            address: '123 Maple Street, Apt 4B\nSpringfield, IL 62704'
-          },
-          {
-            id: '2',
-            name: 'rahul',
-            address: '456 Oak Avenue, Suite 12\nChicago, IL 60616'
-          }
-        ]);
-
-        // Initialize form data with first subscription
-        setFormData({
-          selectedSubscriptions: ['1'],
-          subscriptionAddresses: {
-            '1': {
-              street: '123 Maple Street, Apt 4B',
-              city: 'Springfield',
-              state: 'IL',
-              zipCode: '62704',
-              country: 'United States'
-            }
-          }
-        });
-
-        // Mark data as loaded
+        console.log('Error fetching webhook data:', error);
+        setCustomerName('');
+        setSubscriptions([]);
         setDataLoaded(true);
       }
     };
@@ -625,223 +618,250 @@ function App() {
         </div>
 
         <div className="content">
-          <div className="greeting">Dear {customerName || 'Valued Customer'},</div>
-
-          <div className="message">
-            We found multiple subscriptions on your account, Please select the subscription you want to update the address and provide your new address which you want to update.
-          </div>
-
-          <form onSubmit={handleSubmit} className="response-form">
-            <div className="subscriptions-container">
-              <table className="subscriptions-table">
-                <thead>
-                  <tr>
-                    <th>Select</th>
-                    <th>Subscription</th>
-                    <th>Recipient Name</th>
-                    <th>Current Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subscriptions.map((subscription) => (
-                    <tr key={subscription.id}>
-                      <td className="subscription-select">
-                        <input
-                          type="checkbox"
-                          name="selectedSubscriptions"
-                          value={subscription.id}
-                          checked={formData.selectedSubscriptions.includes(subscription.id)}
-                          onChange={handleInputChange}
-                        />
-                      </td>
-                      <td className="subscription-number">Subscription - {subscription.id}</td>
-                      <td className="subscription-name">{subscription.name}</td>
-                      <td className="subscription-address">
-                        {subscription.address.split('\n').map((line, index) => (
-                          <span key={index}>
-                            {line}
-                            {index < subscription.address.split('\n').length - 1 && <br />}
-                          </span>
-                        ))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Show error message if no data found */}
+          {dataLoaded && subscriptions.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '40px 20px',
+              backgroundColor: '#FFF3E0',
+              borderRadius: '8px',
+              border: '1px solid #FFB74D',
+              margin: '20px 0'
+            }}>
+              <h2 style={{ color: '#E65100', marginBottom: '16px' }}>Session Expired or Invalid Link</h2>
+              <p style={{ color: '#666', marginBottom: '20px', lineHeight: '1.6' }}>
+                We couldn't find your address update request. This could happen if:
+              </p>
+              <ul style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto 20px', color: '#666' }}>
+                <li>Your session has expired (links are valid for 24 hours)</li>
+                <li>You're using an invalid or incomplete link</li>
+                <li>The address update was already completed</li>
+              </ul>
+              <p style={{ color: '#666' }}>
+                Please send another email to <strong>support@historybymail.com</strong> requesting an address update, and we'll send you a new link.
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="greeting">Dear {customerName || 'Valued Customer'},</div>
+
+              <div className="message">
+                We found multiple subscriptions on your account, Please select the subscription you want to update the address and provide your new address which you want to update.
+              </div>
+
+              <form onSubmit={handleSubmit} className="response-form">
+                <div className="subscriptions-container">
+                  <table className="subscriptions-table">
+                    <thead>
+                      <tr>
+                        <th>Select</th>
+                        <th>Subscription</th>
+                        <th>Recipient Name</th>
+                        <th>Current Address</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptions.map((subscription) => (
+                        <tr key={subscription.id}>
+                          <td className="subscription-select">
+                            <input
+                              type="checkbox"
+                              name="selectedSubscriptions"
+                              value={subscription.id}
+                              checked={formData.selectedSubscriptions.includes(subscription.id)}
+                              onChange={handleInputChange}
+                            />
+                          </td>
+                          <td className="subscription-number">Subscription - {subscription.id}</td>
+                          <td className="subscription-name">{subscription.name}</td>
+                          <td className="subscription-address">
+                            {subscription.address.split('\n').map((line, index) => (
+                              <span key={index}>
+                                {line}
+                                {index < subscription.address.split('\n').length - 1 && <br />}
+                              </span>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
 
-            {formData.selectedSubscriptions.map((subscriptionId) => {
-              const subscription = subscriptions.find(sub => sub.id === subscriptionId);
-              const address = formData.subscriptionAddresses[subscriptionId];
+                {formData.selectedSubscriptions.map((subscriptionId) => {
+                  const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+                  const address = formData.subscriptionAddresses[subscriptionId];
 
-              return (
-                <div key={subscriptionId} className="address-form-section">
-                  <h3 className="section-title">
-                    New Address Information for {subscription?.name} (Subscription - {subscriptionId})
-                  </h3>
+                  return (
+                    <div key={subscriptionId} className="address-form-section">
+                      <h3 className="section-title">
+                        New Address Information for {subscription?.name} (Subscription - {subscriptionId})
+                      </h3>
 
-                  <div className="form-row">
-                    <div className="form-group full-width">
-                      <label htmlFor={`address.${subscriptionId}.street`} className="form-label">
-                        Street Address *
-                      </label>
-                      <div className="address-input-container" style={{ position: 'relative' }}>
-                        <input
-                          type="text"
-                          id={`address.${subscriptionId}.street`}
-                          name={`address.${subscriptionId}.street`}
-                          value={address?.street || ''}
-                          onChange={handleInputChange}
-                          onBlur={() => handleInputBlur(subscriptionId)}
-                          placeholder="123 Main Street, Apt 4B"
-                          className="form-input"
-                          required
-                          autoComplete="off"
-                        />
-                        {showSuggestions[subscriptionId] && addressSuggestions[subscriptionId]?.length > 0 && (
-                          <div
-                            className="address-suggestions"
-                            style={{
-                              position: 'absolute',
-                              top: '100%',
-                              left: 0,
-                              right: 0,
-                              backgroundColor: '#ffffff',
-                              border: '2px solid #007bff',
-                              borderTop: 'none',
-                              borderRadius: '0 0 8px 8px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                              zIndex: 9999,
-                              maxHeight: '250px',
-                              overflowY: 'auto',
-                              fontSize: '14px',
-                              fontFamily: 'inherit'
-                            }}
-                          >
-                            {addressSuggestions[subscriptionId].map((suggestion, index) => (
+                      <div className="form-row">
+                        <div className="form-group full-width">
+                          <label htmlFor={`address.${subscriptionId}.street`} className="form-label">
+                            Street Address *
+                          </label>
+                          <div className="address-input-container" style={{ position: 'relative' }}>
+                            <input
+                              type="text"
+                              id={`address.${subscriptionId}.street`}
+                              name={`address.${subscriptionId}.street`}
+                              value={address?.street || ''}
+                              onChange={handleInputChange}
+                              onBlur={() => handleInputBlur(subscriptionId)}
+                              placeholder="123 Main Street, Apt 4B"
+                              className="form-input"
+                              required
+                              autoComplete="off"
+                            />
+                            {showSuggestions[subscriptionId] && addressSuggestions[subscriptionId]?.length > 0 && (
                               <div
-                                key={index}
-                                className="suggestion-item"
+                                className="address-suggestions"
                                 style={{
-                                  padding: '12px 16px',
-                                  cursor: 'pointer',
-                                  borderBottom: index < addressSuggestions[subscriptionId].length - 1 ? '1px solid #e9ecef' : 'none',
-                                  color: '#333333',
-                                  fontSize: '14px',
-                                  lineHeight: '1.4',
+                                  position: 'absolute',
+                                  top: '100%',
+                                  left: 0,
+                                  right: 0,
                                   backgroundColor: '#ffffff',
-                                  transition: 'background-color 0.2s ease'
-                                }}
-                                onClick={() => handleSuggestionSelect(subscriptionId, suggestion)}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor = '#e3f2fd';
-                                  e.currentTarget.style.color = '#1976d2';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor = '#ffffff';
-                                  e.currentTarget.style.color = '#333333';
+                                  border: '2px solid #007bff',
+                                  borderTop: 'none',
+                                  borderRadius: '0 0 8px 8px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  zIndex: 9999,
+                                  maxHeight: '250px',
+                                  overflowY: 'auto',
+                                  fontSize: '14px',
+                                  fontFamily: 'inherit'
                                 }}
                               >
-                                {suggestion}
+                                {addressSuggestions[subscriptionId].map((suggestion, index) => (
+                                  <div
+                                    key={index}
+                                    className="suggestion-item"
+                                    style={{
+                                      padding: '12px 16px',
+                                      cursor: 'pointer',
+                                      borderBottom: index < addressSuggestions[subscriptionId].length - 1 ? '1px solid #e9ecef' : 'none',
+                                      color: '#333333',
+                                      fontSize: '14px',
+                                      lineHeight: '1.4',
+                                      backgroundColor: '#ffffff',
+                                      transition: 'background-color 0.2s ease'
+                                    }}
+                                    onClick={() => handleSuggestionSelect(subscriptionId, suggestion)}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#e3f2fd';
+                                      e.currentTarget.style.color = '#1976d2';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#ffffff';
+                                      e.currentTarget.style.color = '#333333';
+                                    }}
+                                  >
+                                    {suggestion}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        )}
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label htmlFor={`address.${subscriptionId}.city`} className="form-label">
+                            City *
+                          </label>
+                          <input
+                            type="text"
+                            id={`address.${subscriptionId}.city`}
+                            name={`address.${subscriptionId}.city`}
+                            value={address?.city || ''}
+                            onChange={handleInputChange}
+                            placeholder="Springfield"
+                            className="form-input"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor={`address.${subscriptionId}.state`} className="form-label">
+                            State *
+                          </label>
+                          <input
+                            type="text"
+                            id={`address.${subscriptionId}.state`}
+                            name={`address.${subscriptionId}.state`}
+                            value={address?.state || ''}
+                            onChange={handleInputChange}
+                            placeholder="IL"
+                            className="form-input"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor={`address.${subscriptionId}.zipCode`} className="form-label">
+                            ZIP Code *
+                          </label>
+                          <input
+                            type="text"
+                            id={`address.${subscriptionId}.zipCode`}
+                            name={`address.${subscriptionId}.zipCode`}
+                            value={address?.zipCode || ''}
+                            onChange={handleInputChange}
+                            placeholder="62704"
+                            className="form-input"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label htmlFor={`address.${subscriptionId}.country`} className="form-label">
+                            Country
+                          </label>
+                          <input
+                            type="text"
+                            id={`address.${subscriptionId}.country`}
+                            name={`address.${subscriptionId}.country`}
+                            value={address?.country || ''}
+                            onChange={handleInputChange}
+                            className="form-input"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  );
+                })}
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor={`address.${subscriptionId}.city`} className="form-label">
-                        City *
-                      </label>
-                      <input
-                        type="text"
-                        id={`address.${subscriptionId}.city`}
-                        name={`address.${subscriptionId}.city`}
-                        value={address?.city || ''}
-                        onChange={handleInputChange}
-                        placeholder="Springfield"
-                        className="form-input"
-                        required
-                      />
-                    </div>
 
-                    <div className="form-group">
-                      <label htmlFor={`address.${subscriptionId}.state`} className="form-label">
-                        State *
-                      </label>
-                      <input
-                        type="text"
-                        id={`address.${subscriptionId}.state`}
-                        name={`address.${subscriptionId}.state`}
-                        value={address?.state || ''}
-                        onChange={handleInputChange}
-                        placeholder="IL"
-                        className="form-input"
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor={`address.${subscriptionId}.zipCode`} className="form-label">
-                        ZIP Code *
-                      </label>
-                      <input
-                        type="text"
-                        id={`address.${subscriptionId}.zipCode`}
-                        name={`address.${subscriptionId}.zipCode`}
-                        value={address?.zipCode || ''}
-                        onChange={handleInputChange}
-                        placeholder="62704"
-                        className="form-input"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor={`address.${subscriptionId}.country`} className="form-label">
-                        Country
-                      </label>
-                      <input
-                        type="text"
-                        id={`address.${subscriptionId}.country`}
-                        name={`address.${subscriptionId}.country`}
-                        value={address?.country || ''}
-                        onChange={handleInputChange}
-                        className="form-input"
-                      />
-                    </div>
-                  </div>
+                <div className="button-container">
+                  <button
+                    type="submit"
+                    className="response-button"
+                    onClick={() => console.log('Button clicked!')}
+                  >
+                    UPDATE ADDRESS
+                  </button>
                 </div>
-              );
-            })}
+              </form>
 
+              <div className="closing">
+                Thank you for keeping your subscription information up to date. We'll ensure your next mails are delivered to your new address, however mails ordered prior to address change will be delivered on your old address
+              </div>
 
-            <div className="button-container">
-              <button
-                type="submit"
-                className="response-button"
-                onClick={() => console.log('Button clicked!')}
-              >
-                UPDATE ADDRESS
-              </button>
-            </div>
-          </form>
-
-          <div className="closing">
-            Thank you for keeping your subscription information up to date. We'll ensure your next mails are delivered to your new address, however mails ordered prior to address change will be delivered on your old address
-          </div>
-
-          <div className="signature">
-            Best regards,<br />
-            History by Mail Support Team<br /><br />
-            For any further inquiry you can contact us on support@historybymail.com
-          </div>
+              <div className="signature">
+                Best regards,<br />
+                History by Mail Support Team<br /><br />
+                For any further inquiry you can contact us on support@historybymail.com
+              </div>
+            </>
+          )}
         </div>
 
         <div className="footer">

@@ -17,22 +17,42 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the React app build directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Store webhook data in memory (in production, use a database)
-let webhookData = [];
+// Store webhook data in memory keyed by customer email
+// Format: { "email@example.com": { id, timestamp, data } }
+let webhookData = {};
+
+// Auto-cleanup old entries (older than 24 hours) - runs every hour
+setInterval(() => {
+  const now = Date.now();
+  const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  let cleanedCount = 0;
+  
+  for (const email in webhookData) {
+    const entryTime = new Date(webhookData[email].timestamp).getTime();
+    if (now - entryTime > maxAge) {
+      delete webhookData[email];
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`Cleaned up ${cleanedCount} expired webhook entries`);
+  }
+}, 60 * 60 * 1000); // Run every hour
 
 // Main webhook endpoint for n8n customer data
 app.post('/webhook/customer-data', (req, res) => {
   const data = req.body;
   
   // Validate the expected n8n data structure
-  if (!data.customer_name || !data.shopify_id || !data.recharge_id || !data.subscriptions) {
+  if (!data.customer_name || !data.email || !data.subscriptions) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid data format. Expected customer_name, shopify_id, recharge_id, and subscriptions.'
+      message: 'Invalid data format. Expected customer_name, email, and subscriptions.'
     });
   }
   
-  // Create webhook entry
+  // Create webhook entry keyed by email
   const webhookEntry = {
     id: `webhook-${Date.now()}`,
     webhookId: 'customer-data',
@@ -43,10 +63,13 @@ app.post('/webhook/customer-data', (req, res) => {
     ip: req.ip || req.connection.remoteAddress
   };
   
-  // Store the webhook data (replace existing customer data)
-  webhookData = [webhookEntry];
+  // Store the webhook data by email (allows multiple users)
+  webhookData[data.email] = webhookEntry;
   
-  console.log('Customer data received from n8n:', data);
+  console.log(`Customer data received from n8n for: ${data.email}`, {
+    customer_name: data.customer_name,
+    subscriptions_count: data.subscriptions.length
+  });
   
   // Send response
   res.status(200).json({
@@ -85,13 +108,8 @@ app.all('/webhook/:webhookId', (req, res) => {
     ip: req.ip || req.connection.remoteAddress
   };
   
-  // Store the webhook data
-  webhookData.unshift(webhookEntry);
-  
-  // Keep only last 100 entries
-  if (webhookData.length > 100) {
-    webhookData = webhookData.slice(0, 100);
-  }
+  // For generic webhooks, store by webhookId
+  webhookData[`generic-${webhookId}-${Date.now()}`] = webhookEntry;
   
   console.log(`Webhook received: ${method} /webhook/${webhookId}`, data);
   
@@ -106,22 +124,54 @@ app.all('/webhook/:webhookId', (req, res) => {
   });
 });
 
-// Endpoint to get all webhook data
+// Endpoint to get webhook data - now requires email parameter
 app.get('/api/webhook-data', (req, res) => {
-  res.json({
-    success: true,
-    data: webhookData,
-    count: webhookData.length
-  });
+  const email = req.query.email;
+  
+  if (!email) {
+    return res.json({
+      success: false,
+      message: 'Email parameter is required. Use ?email=customer@example.com',
+      data: [],
+      count: 0
+    });
+  }
+  
+  const customerData = webhookData[email];
+  
+  if (customerData) {
+    res.json({
+      success: true,
+      data: [customerData],
+      count: 1
+    });
+  } else {
+    res.json({
+      success: false,
+      message: 'No data found for this email. Your session may have expired. Please send another address update email.',
+      data: [],
+      count: 0
+    });
+  }
 });
 
-// Endpoint to clear webhook data
+// Endpoint to clear webhook data for a specific email or all
 app.delete('/api/webhook-data', (req, res) => {
-  webhookData = [];
-  res.json({
-    success: true,
-    message: 'Webhook data cleared'
-  });
+  const email = req.query.email;
+  
+  if (email) {
+    delete webhookData[email];
+    res.json({
+      success: true,
+      message: `Webhook data cleared for ${email}`
+    });
+  } else {
+    webhookData = {};
+    res.json({
+      success: true,
+      message: 'All webhook data cleared'
+    });
+  }
 });
 
 // Health check endpoint
