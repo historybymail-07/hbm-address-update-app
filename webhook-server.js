@@ -192,12 +192,23 @@ app.delete('/api/webhook-data', (req, res) => {
   }
 });
 
+// Debug endpoint to list all stored email keys
+app.get('/api/debug/keys', (req, res) => {
+  res.json({
+    success: true,
+    stored_emails: Object.keys(webhookData),
+    count: Object.keys(webhookData).length,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    stored_keys_count: Object.keys(webhookData).length
   });
 });
 
