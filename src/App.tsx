@@ -72,9 +72,6 @@ function App() {
   const debounceTimer = useRef<number | null>(null);
   const addressDebounceTimer = useRef<number | null>(null);
 
-  // Ref to prevent double-fetch in React StrictMode
-  const hasFetchedData = useRef<boolean>(false);
-
   // Function to normalize state to abbreviation
   const normalizeStateToAbbreviation = useCallback((state: string): string => {
     if (!state) return '';
@@ -273,9 +270,7 @@ function App() {
   useEffect(() => {
     const loadWebhookData = async () => {
       // Only load data once to prevent overriding user input
-      // Use ref to prevent double-fetch in React StrictMode
-      if (dataLoaded || hasFetchedData.current) return;
-      hasFetchedData.current = true;
+      if (dataLoaded) return;
 
       // Extract email from URL query parameter
       const urlParams = new URLSearchParams(window.location.search);
